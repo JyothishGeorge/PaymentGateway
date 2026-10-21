@@ -62,7 +62,7 @@ GET:  PaymentsController -> GetPaymentQueryHandler -> IPaymentsRepository
 
 
 ## Assumptions
-- **No DDD (Domain Driven Design) or Event Driven Architecture considered. Also BDD (Gherken) or TestContainer** based integration tests Avoid over-engineering for this simple solution.
+- **No DDD (Domain Driven Design) or Event Driven Architecture considered. Also BDD (Gherken) or TestContainer** based integration tests to avoid over-engineering for this simple solution.
 - No **docker** deployment configurations
 - **Supported currencies** are `GBP`, `USD` and `EUR` (exact, upper-case).
 - **Amount** must be a positive integer (> 0) in minor units and fits in an `int`.
