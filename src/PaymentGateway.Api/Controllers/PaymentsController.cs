@@ -26,7 +26,7 @@ public class PaymentsController : Controller
     [HttpPost]
     [ProducesResponseType(typeof(PostPaymentResponse), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(RejectedPaymentResponse), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status502BadGateway)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> PostPayment(PostPaymentRequest request, CancellationToken cancellationToken)
     {
         var result = await _processPayment.HandleAsync(ProcessPaymentCommand.From(request), cancellationToken);
@@ -36,7 +36,7 @@ public class PaymentsController : Controller
             return Problem(
                 title: "Acquiring bank unavailable",
                 detail: result.Error,
-                statusCode: StatusCodes.Status502BadGateway);
+                statusCode: StatusCodes.Status503ServiceUnavailable);
         }
 
         var response = PostPaymentResponse.From(result.Value!);

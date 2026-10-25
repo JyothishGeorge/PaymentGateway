@@ -30,7 +30,7 @@ All endpoints require the header `X-Api-Key: pg_test_123e4567e89b12d3a4564266141
 | Authorized | `201 Created` (+ `Location` header) | `{ id, status: "Authorized", cardNumberLastFour, expiryMonth, expiryYear, currency, amount }` |
 | Declined | `201 Created` (+ `Location` header) | as above with `status: "Declined"` |
 | Rejected (invalid request, bank not called) | `400 Bad Request` | `{ status: "Rejected", errors: [ ... ] }` |
-| Acquiring bank unavailable / error | `502 Bad Gateway` | `ProblemDetails` |
+| Acquiring bank unavailable / error | `503 Service Unavailable` | `ProblemDetails` |
 
 ### `GET /api/payments/{id}`
 
@@ -47,13 +47,13 @@ GET:  PaymentsController -> GetPaymentQueryHandler -> IPaymentsRepository
 ```
 
 - **ApiKeyAuthenticationHandler** is a custom `AuthenticationHandler<ApiKeyOptions>`. It accepts one configured test key from the `X-Api-Key` header, to demonstrate, can be repalced by authetication like JWT token verififcation 
-- **Controller** is thin: HTTP mapping only (201/400/401/404/502).
+- **Controller** is thin: HTTP mapping only (201/400/401/404/503).
 - **ValidationFilter** is a global MVC action filter. It resolves `IValidator<T>` for each action argument and, if validation fails, short-circuits with `400` `Rejected` before the controller runs, so the bank is never called.
 - **CQRS (plain handlers, no mediator library to avoid over engineering)**: writes and reads are separate. `ProcessPaymentCommand` / `ProcessPaymentCommandHandler` (in `Commands/`) writes. `GetPaymentQuery` / `GetPaymentQueryHandler` (in `Queries/`) only reads.
 - **PaymentRequestValidator** is a FluentValidation `AbstractValidator<PostPaymentRequest>` (registered as `IValidator<PostPaymentRequest>`). It returns all errors at once, so merchants can fix everything in one go. 
 - **AcquiringBankClient** is the only component that knows the bank's contract (snake_case JSON, `MM/yyyy` expiry). Any non-2xx response, network failure or timeout is logged and returned as a failed `Result<BankPaymentResponse>`.  
-- **Bank resilience** uses `Microsoft.Extensions.Http.Resilience`'s standard handler, demostrated retries (can be extended for Circuit Breaker,Rate Limiting, Timeouts etc)  **only when the connection to the bank could not be established**, because the request then never reached the bank. 5xx responses, timeouts and dropped responses are not retried, because the bank may already have charged the card. Failures surface as `502 Bad Gateway`.
-- **Result pattern (small, hand-written `Result<T>`)**: the bank being unavailable is an expected outcome (e.g. the simulator returns 503 for cards ending in 0), so `AcquiringBankClient` returns `Result<BankPaymentResponse>` instead of throwing. `ProcessPaymentCommandHandler` passes a failure on as `Result<Payment>`, and the controller maps it to `502`. There is no try/catch outside the client. Exceptions remain for real faults; no result library was added.
+- **Bank resilience** uses `Microsoft.Extensions.Http.Resilience`'s standard handler, demostrated retries (can be extended for Circuit Breaker,Rate Limiting, Timeouts etc)  **only when the connection to the bank could not be established**, because the request then never reached the bank. 5xx responses, timeouts and dropped responses are not retried, because the bank may already have charged the card. Failures surface as `503 Service Unavailable`.
+- **Result pattern (small, hand-written `Result<T>`)**: the bank being unavailable is an expected outcome (e.g. the simulator returns 503 for cards ending in 0), so `AcquiringBankClient` returns `Result<BankPaymentResponse>` instead of throwing. `ProcessPaymentCommandHandler` passes a failure on as `Result<Payment>`, and the controller maps it to `503`. There is no try/catch outside the client. Exceptions remain for real faults; no result library was added.
 - **Observability** uses OpenTelemetry: logs and traces are written with the built-in console exporter. A production setup would swap this for an OTLP exporter to a collector.
 - **PaymentsRepository** is the provided in-memory test double, made thread-safe (`ConcurrentDictionary`)
 - The stored `Payment` domain model never contains the full card number or CVV. Only the last four digits are kept, so they cannot leak through storage or the GET endpoint.
@@ -90,7 +90,7 @@ Major cases from the assessment brief. Send each body to `POST /api/payments` wi
 |---|---|---|
 | Authorized (card ends in odd digit) | `{ "cardNumber": "2222405343248877", "expiryMonth": 4, "expiryYear": 2027, "currency": "GBP", "amount": 1050, "cvv": "123" }` | `201`, `"status": "Authorized"`, `"cardNumberLastFour": "8877"` |
 | Declined (card ends in even digit) | `{ "cardNumber": "2222405343248878", "expiryMonth": 4, "expiryYear": 2027, "currency": "GBP", "amount": 1050, "cvv": "123" }` | `201`, `"status": "Declined"` |
-| Bank unavailable (card ends in 0) | `{ "cardNumber": "2222405343248870", "expiryMonth": 4, "expiryYear": 2027, "currency": "GBP", "amount": 1050, "cvv": "123" }` | `502 Bad Gateway`, `ProblemDetails` || Rejected: missing required fields | `{}` | `400`, `"status": "Rejected"` |
+| Bank unavailable (card ends in 0) | `{ "cardNumber": "2222405343248870", "expiryMonth": 4, "expiryYear": 2027, "currency": "GBP", "amount": 1050, "cvv": "123" }` | `503 Service Unavailable`, `ProblemDetails` || Rejected: missing required fields | `{}` | `400`, `"status": "Rejected"` |
 | Rejected: missing required fields | `{}` | `400`, `"status": "Rejected"` |
 | Rejected: card number not numeric | `{ "cardNumber": "2222-4053-4324", "expiryMonth": 4, "expiryYear": 2027, "currency": "GBP", "amount": 1050, "cvv": "123" }` | `400`, `"status": "Rejected"` |
 | Rejected: expiry month not 1-12 | `{ "cardNumber": "2222405343248877", "expiryMonth": 13, "expiryYear": 2027, "currency": "GBP", "amount": 1050, "cvv": "123" }` | `400`, `"status": "Rejected"` |

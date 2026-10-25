@@ -103,7 +103,7 @@ public class PaymentsControllerTests : IClassFixture<WebApplicationFactory<Progr
     }
 
     [Fact]
-    public async Task PostPayment_BankUnavailable_ReturnsBadGateway()
+    public async Task PostPayment_BankUnavailable_ReturnsServiceUnavailable()
     {
         // Arrange
         _bank.RespondsWith(TestData.BankUnavailable);
@@ -112,7 +112,7 @@ public class PaymentsControllerTests : IClassFixture<WebApplicationFactory<Progr
         var response = await PostAsync();
 
         // Assert
-        Assert.Equal(HttpStatusCode.BadGateway, response.StatusCode);
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
         Assert.Null(response.Headers.Location);
     }
 
