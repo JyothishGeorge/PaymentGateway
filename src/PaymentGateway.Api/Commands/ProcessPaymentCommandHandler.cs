@@ -10,7 +10,7 @@ public class ProcessPaymentCommandHandler
     private readonly IAcquiringBankClient _bankClient;
     private readonly IPaymentsRepository _repository;
 
-    public ProcessPaymentCommandHandler(IAcquiringBankClient bankClient, IPaymentsRepository repository)
+    public ProcessPaymentCommandHandler(IAcquiringBankClient bankClient, IPaymentsRepository repository )
     {
         _bankClient = bankClient;
         _repository = repository;

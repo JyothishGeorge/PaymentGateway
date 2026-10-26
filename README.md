@@ -49,6 +49,7 @@ GET:  PaymentsController -> GetPaymentQueryHandler -> IPaymentsRepository
 - **ApiKeyAuthenticationHandler** is a custom `AuthenticationHandler<ApiKeyOptions>`. It accepts one configured test key from the `X-Api-Key` header, to demonstrate, can be repalced by authetication like JWT token verififcation 
 - **Controller** is thin: HTTP mapping only (201/400/401/404/503).
 - **ValidationFilter** is a global MVC action filter. It resolves `IValidator<T>` for each action argument and, if validation fails, short-circuits with `400` `Rejected` before the controller runs, so the bank is never called.
+- **GlobalExceptionFilter** is a global MVC exception filter. Any unhandled exception from an action is logged and returned as a generic `500` `ProblemDetails`
 - **CQRS (plain handlers, no mediator library to avoid over engineering)**: writes and reads are separate. `ProcessPaymentCommand` / `ProcessPaymentCommandHandler` (in `Commands/`) writes. `GetPaymentQuery` / `GetPaymentQueryHandler` (in `Queries/`) only reads.
 - **PaymentRequestValidator** is a FluentValidation `AbstractValidator<PostPaymentRequest>` (registered as `IValidator<PostPaymentRequest>`). It returns all errors at once, so merchants can fix everything in one go. 
 - **AcquiringBankClient** is the only component that knows the bank's contract (snake_case JSON, `MM/yyyy` expiry). Any non-2xx response, network failure or timeout is logged and returned as a failed `Result<BankPaymentResponse>`.  

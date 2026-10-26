@@ -6,8 +6,11 @@ using PaymentGateway.Api.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services
-    .AddControllers(options => options.Filters.Add<ValidationFilter>())
+builder.Services.AddControllers(options =>
+        {
+            options.Filters.Add<GlobalExceptionFilter>();
+            options.Filters.Add<ValidationFilter>();
+        })
     .AddJsonOptions(options => options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()))
     .AddRejectedModelStateResponse();
 builder.Services.AddEndpointsApiExplorer();
